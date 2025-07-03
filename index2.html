@@ -15,6 +15,7 @@
             --border-color: #537895;
             --success-color: #28a745;
             --warning-color: #ffc107;
+            --alt-color: #17a2b8;
         }
         * { box-sizing: border-box; }
         body {
@@ -58,7 +59,6 @@
         input[type="date"] { color-scheme: dark; }
         .korean-currency { font-size: 0.9em; color: #a0a0a0; text-align: right; height: 1em; margin-top: 4px; }
         
-        /* --- 결과 섹션 --- */
         #results {
             background-color: var(--primary-color);
             border-radius: 10px;
@@ -108,12 +108,8 @@
                     <label for="endDate">4. 대출 종료일</label>
                     <input type="date" id="endDate" value="2025-06-16">
                 </div>
-                <div class="input-group">
-                    <label for="cofixRate">5. Cofix 금리 (%)</label>
-                    <input type="number" step="0.0001" id="cofixRate" value="3.0325">
-                </div>
-                <div class="input-group">
-                    <label for="spreadRate">6. 가산 금리 (%)</label>
+                <div class="input-group full-width">
+                    <label for="spreadRate">5. 가산 금리 (%)</label>
                     <input type="number" step="0.1" id="spreadRate" value="2.6">
                 </div>
             </div>
@@ -128,15 +124,16 @@
     </div>
 
     <script>
+        const historicalCofixRate = 2.96; // 2022년 8월 기준 COFIX (신규취급액)
+
         const assetValueInput = document.getElementById('assetValue');
         const loanAmountInput = document.getElementById('loanAmount');
         const startDateInput = document.getElementById('startDate');
         const endDateInput = document.getElementById('endDate');
-        const cofixRateInput = document.getElementById('cofixRate');
         const spreadRateInput = document.getElementById('spreadRate');
         const resultsDiv = document.getElementById('results');
 
-        [assetValueInput, loanAmountInput, startDateInput, endDateInput, cofixRateInput, spreadRateInput].forEach(input => {
+        [assetValueInput, loanAmountInput, startDateInput, endDateInput, spreadRateInput].forEach(input => {
             input.addEventListener('input', calculate);
         });
 
@@ -144,7 +141,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             handleInputFormatting({ target: assetValueInput });
-            updateLoanAmount(); // 대출금액 자동 계산 후 포맷팅 및 계산
+            updateLoanAmount();
         });
 
         function handleInputFormatting(e) {
@@ -158,9 +155,9 @@
         function updateLoanAmount() {
             const assetValue = parseFloat(assetValueInput.value.replace(/,/g, '')) || 0;
             const calculatedLoan = assetValue * 0.4;
-            loanAmountInput.value = calculatedLoan; // 자동 계산된 값 설정
-            handleInputFormatting({target: loanAmountInput}); // 포맷팅
-            calculate(); // 자동 계산 후 전체 재계산
+            loanAmountInput.value = calculatedLoan;
+            handleInputFormatting({target: loanAmountInput});
+            calculate();
         }
         
         function numberToKorean(num_str) {
@@ -191,39 +188,35 @@
         }
 
         function calculate() {
-            // 입력값 가져오기
             const loanAmount = parseFloat(loanAmountInput.value.replace(/,/g, '')) || 0;
-            const cofixRate = parseFloat(cofixRateInput.value) || 0;
             const spreadRate = parseFloat(spreadRateInput.value) || 0;
             const startDate = new Date(startDateInput.value);
             const endDate = new Date(endDateInput.value);
 
-            if (!loanAmount || !cofixRate || !spreadRate || isNaN(startDate) || isNaN(endDate) || startDate >= endDate) {
+            if (!loanAmount || !spreadRate || isNaN(startDate) || isNaN(endDate) || startDate >= endDate) {
                 resultsDiv.innerHTML = '<p>모든 값을 정확히 입력해주세요.</p>';
                 return;
             }
 
-            // 계산 로직
             const timeDiff = endDate.getTime() - startDate.getTime();
             const days = timeDiff / (1000 * 60 * 60 * 24);
-            const years = days / 365.25; // 윤년 고려
+            const years = days / 365.25;
             
             const totalMonths = Math.floor(days / 30.4375);
             const periodYears = Math.floor(totalMonths / 12);
             const periodMonths = totalMonths % 12;
 
-            const totalRate = (cofixRate + spreadRate) / 100;
+            const totalRate = (historicalCofixRate + spreadRate) / 100;
             const totalInterest = loanAmount * totalRate * years;
             
-            // 결과 표시
             resultsDiv.innerHTML = `
                 <div class="result-item">
                     <div class="result-label">총 대출 기간</div>
                     <div class="result-value">${periodYears}년 ${periodMonths}개월 (${Math.round(days)}일)</div>
                 </div>
                 <div class="result-item">
-                    <div class="result-label">적용 금리 (Cofix + 가산)</div>
-                    <div class="result-value" style="color:var(--alt-color);">${(totalRate * 100).toFixed(4)}%</div>
+                    <div class="result-label">적용 금리 (COFIX + 가산금리)</div>
+                    <div class="result-value" style="color:var(--alt-color);">${historicalCofixRate}% + ${spreadRate}% = ${ (totalRate * 100).toFixed(4)}%</div>
                 </div>
                 <div class="result-item">
                     <div class="result-label">총 납부 예상 이자</div>
