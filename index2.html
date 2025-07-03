@@ -148,30 +148,38 @@
         const spreadRateInput = document.getElementById('spreadRate');
         const resultsDiv = document.getElementById('results');
 
-        [assetValueInput, loanAmountInput, startDateInput, endDateInput, spreadRateInput].forEach(input => {
+        // --- 이벤트 리스너 ---
+        assetValueInput.addEventListener('input', handleAssetValueChange);
+        loanAmountInput.addEventListener('input', (e) => handleInputFormatting(e, calculate));
+        [startDateInput, endDateInput, spreadRateInput].forEach(input => {
             input.addEventListener('input', calculate);
         });
 
-        assetValueInput.addEventListener('input', updateLoanAmount);
-
         document.addEventListener('DOMContentLoaded', () => {
-            handleInputFormatting({ target: assetValueInput });
-            updateLoanAmount();
+             handleAssetValueChange({target: assetValueInput});
         });
 
-        function handleInputFormatting(e) {
+        // --- 핸들러 함수 ---
+        function handleInputFormatting(e, callback) {
             const inputId = e.target.id;
             const rawValue = e.target.value.replace(/[^0-9]/g, '');
             const formattedValue = rawValue ? parseInt(rawValue, 10).toLocaleString('ko-KR') : '';
             e.target.value = formattedValue;
             document.getElementById(inputId + 'Korean').textContent = numberToKorean(rawValue);
+            if(callback) callback();
         }
-        
-        function updateLoanAmount() {
+
+        function handleAssetValueChange(e) {
+            // 1. 권리가액 입력 포맷팅 및 한글 변환
+            handleInputFormatting(e); 
+            
+            // 2. 대출금액 자동 계산 및 포맷팅
             const assetValue = parseFloat(assetValueInput.value.replace(/,/g, '')) || 0;
             const calculatedLoan = assetValue * 0.4;
             loanAmountInput.value = calculatedLoan;
             handleInputFormatting({target: loanAmountInput});
+
+            // 3. 최종 계산 실행
             calculate();
         }
         
@@ -202,6 +210,7 @@
             return new Intl.NumberFormat('ko-KR').format(Math.round(num)) + '원';
         }
 
+        // --- 메인 계산 함수 ---
         function calculate() {
             const loanAmount = parseFloat(loanAmountInput.value.replace(/,/g, '')) || 0;
             const spreadRate = parseFloat(spreadRateInput.value) || 0;
@@ -230,7 +239,7 @@
                     <div class="result-value">${periodYears}년 ${periodMonths}개월 (${Math.round(days)}일)</div>
                 </div>
                 <div class="result-item">
-                    <div class="result-label">적용 금리 (COFIX(${historicalCofixRate}%) + 가산금리)</div>
+                    <div class="result-label">적용 금리 (COFIX + 가산금리)</div>
                     <div class="result-value" style="color:var(--alt-color);">${historicalCofixRate}% + ${spreadRate}% = ${ (totalRate * 100).toFixed(4)}%</div>
                 </div>
                 <div class="result-item">
